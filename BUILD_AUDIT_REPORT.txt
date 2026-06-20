@@ -1,0 +1,167 @@
+========================================================================
+  GOODNESS TRADE LENS — BUILD AUDIT REPORT
+  Generated: 2025-06-20  |  Environment: Replit (Node 24, pnpm workspace)
+========================================================================
+
+SECTION 1 — PROJECT OVERVIEW
+──────────────────────────────────────────────────────────────────────
+"Goodness Trade Lens" is a Progressive Web App (PWA) built as a
+beginner-focused Forex educational analytics engine. It is NOT a
+live brokerage or trading platform. No real trades are executed.
+No real money is involved.
+
+The project follows a strict monorepo layout managed by pnpm workspaces:
+
+  artifacts/
+    api-server/       ← Express 5 backend (port 8080)
+    goodness-trade-lens/ ← React + Vite frontend (proxied at /)
+
+  lib/
+    db/               ← Drizzle ORM schema (PostgreSQL, unused in MVP)
+    api-spec/         ← OpenAPI contract + Orval codegen
+
+All traffic is routed through a Replit-managed reverse proxy:
+  /api/* → api-server (port 8080)
+  /      → goodness-trade-lens frontend
+
+
+SECTION 2 — BACKEND API ROUTES (artifacts/api-server)
+──────────────────────────────────────────────────────────────────────
+Route 1: GET /api/market-data
+  Purpose   : Returns mock price data for EUR/USD, GBP/USD, EUR/SGD.
+              Each record includes: pair, price, change24h, spreadPips,
+              closingPrices (14 data points for the SVG chart).
+  Security  : No authentication required (public educational data).
+  Risk      : Data is static mock data. In a production upgrade, this
+              route should connect to a real market data provider (e.g.
+              Alpha Vantage, OANDA) behind a server-side API key — never
+              expose 3rd-party market API keys to the frontend.
+
+Route 2: GET /api/economic-calendar
+  Purpose   : Returns 7 calendar events (NFP, BOE, ECB, CPI, etc.) with
+              title, currency, date, impact level, forecast, and description.
+  Security  : Static data, no secrets involved. Safe.
+  Risk      : Dates are hardcoded. For production, connect to a real
+              economic calendar API (e.g. Forex Factory, Finnhub) via a
+              server-side fetch — again, never in frontend code.
+
+Route 3: POST /api/ai-analyze
+  Purpose   : Accepts { currencyPair, technicalCondition } and calls an
+              AI provider to return a beginner-friendly market analysis.
+  Provider  : Tries Groq first (llama3-8b-8192), falls back to
+              OpenRouter (meta-llama/llama-3.1-8b-instruct).
+  Security  : GROQ_API_KEY and OPENROUTER_API_KEY are read exclusively
+              from process.env on the server. They are NEVER sent to or
+              accessible by the frontend client. ✓ SECURE.
+  Risk      : 20-second timeout per provider. If both providers fail
+              simultaneously (e.g. during OpenRouter outages), the
+              endpoint returns HTTP 502. Consider adding a graceful
+              "AI unavailable — try again later" message in the UI for
+              production (already implemented in the frontend).
+  AI Output : The AI is constrained by a system prompt that:
+              (a) prohibits non-trading topics
+              (b) mandates beginner-friendly language
+              (c) requires explicit risk warnings
+              (d) forbids guaranteed profit claims
+
+
+SECTION 3 — FRONTEND ARCHITECTURE (artifacts/goodness-trade-lens)
+──────────────────────────────────────────────────────────────────────
+Framework : React 18 + Vite 6, TypeScript strict mode
+Styling   : Tailwind CSS v4 (utility classes) + inline CSS properties
+             for glassmorphism effects (backdrop-filter, rgba)
+Components: Single-file architecture in Dashboard.tsx with 5 components:
+              NumpadOverlay   — glassmorphic calculator input overlay
+              JargonTooltip   — info-icon tooltip with click-outside close
+              ChartCanvas     — pure SVG trendline with gradient fill
+              ScreenMarket    — Tab 1: prices, chart, position calculator
+              ScreenAI        — Tab 2: AI analysis + jargon annotation
+              ScreenInsights  — Tab 3: calendar events + glossary
+
+PWA Status:
+  ✓ public/manifest.json       — name, short_name, theme/bg colors, icon
+  ✓ public/service-worker.js   — caches statics, bypasses /api/* routes
+  ✓ index.html                 — <link rel="manifest">, Apple PWA meta
+                                  tags, SW registration script
+  ✓ Installable as standalone app on iOS/Android from browser
+
+Environment Variable Security:
+  ✓ No API keys present in any frontend source file or bundle
+  ✓ All secrets accessed exclusively via process.env in api-server
+  ✓ Vite does not expose any VITE_* prefixed secrets (none defined)
+
+Jargon Decoder:
+  A 16-term dictionary (JARGON constant) post-processes every AI
+  response string on the client side. Matched trading terms are
+  annotated with italic inline explanations in purple. The
+  JargonTooltip component provides additional on-demand tooltips
+  on the Markets screen next to "Spread", "Pips", and "Leverage".
+
+
+SECTION 4 — DATA FLOW DIAGRAM
+──────────────────────────────────────────────────────────────────────
+User Device (Browser / PWA)
+    │
+    ├─ GET /api/market-data ──────────────► api-server
+    │                                           └─ Returns mock prices
+    │
+    ├─ GET /api/economic-calendar ────────► api-server
+    │                                           └─ Returns 7 events
+    │
+    └─ POST /api/ai-analyze ──────────────► api-server
+           { currencyPair,                      │
+             technicalCondition }               ├─► Groq API (if key set)
+                                                └─► OpenRouter API (fallback)
+                                                    └─ Returns plain-English analysis
+
+Frontend never contacts Groq or OpenRouter directly.
+All AI requests are proxied through the backend server. ✓
+
+
+SECTION 5 — SECURITY FINDINGS
+──────────────────────────────────────────────────────────────────────
+[PASS] API keys are server-side only — no exposure risk
+[PASS] No SQL injection vectors (no user-controlled DB queries in MVP)
+[PASS] No XSS vectors — AI text is rendered as React text nodes, not
+       dangerouslySetInnerHTML
+[PASS] CORS not overly permissive — Express default (same-origin)
+[PASS] No sensitive data stored in localStorage or sessionStorage
+[INFO] No authentication layer — app is fully public (by design for
+       an educational demo). Add Replit Auth before any account features.
+[INFO] Timeout on AI providers is 20s — acceptable for educational use,
+       but consider reducing to 10s with a retry UI for production.
+[INFO] No rate limiting on /api/ai-analyze — add express-rate-limit
+       before public launch to prevent API key exhaustion.
+
+
+SECTION 6 — PERFORMANCE NOTES
+──────────────────────────────────────────────────────────────────────
+- SVG chart uses preserveAspectRatio="none" — renders efficiently at
+  any viewport without JavaScript resize listeners.
+- Market data and calendar are fetched once on mount (no polling).
+  For real-time prices, add a 10-second setInterval refetch gated on
+  document.visibilityState === 'visible'.
+- Service worker caches static assets (HTML, JS, CSS) — subsequent
+  loads are near-instant offline.
+- backdrop-filter (glassmorphism) is GPU-accelerated on modern devices
+  but can degrade on low-end Android. Test on target device range.
+- Tailwind v4 purges unused CSS at build time — bundle size is minimal.
+
+
+SECTION 7 — RECOMMENDED NEXT STEPS FOR SCALING
+──────────────────────────────────────────────────────────────────────
+1. Replace mock market data with a real provider (Alpha Vantage free
+   tier, OANDA practice API, or Polygon.io) behind a server-side cache.
+2. Add express-rate-limit middleware to /api/ai-analyze (5 req/min
+   per IP is a reasonable starting point).
+3. Add Replit Auth if user accounts / saved analyses are needed.
+4. Implement WebSocket or SSE for live price streaming instead of polling.
+5. Add a Drizzle ORM schema for persisting user glossary notes or
+   AI analysis history (db package is scaffolded but unused).
+6. Add integration tests for the three API routes using Vitest + supertest.
+7. Consider caching AI responses per (pair + condition) for 60 seconds
+   to reduce API costs under load.
+
+========================================================================
+  END OF REPORT
+========================================================================
