@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Goodness Trade Lens"
+version = "1.0.0"
+id = "artifacts/goodness-trade-lens"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19565
+
+[services.development]
+run = "pnpm --filter @workspace/goodness-trade-lens run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/goodness-trade-lens", "run", "build" ]
+publicDir = "artifacts/goodness-trade-lens/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19565"
+BASE_PATH = "/"
