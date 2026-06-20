@@ -1,18 +1,24 @@
 {
   "name": "Goodness Trade Lens",
   "short_name": "TradeLens",
-  "description": "A premium, beginner-focused Forex educational analytics app.",
+  "description": "A premium beginner-focused Forex educational analytics engine.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#111622",
-  "background_color": "#111622",
+  "theme_color": "#0b0f19",
+  "background_color": "#0b0f19",
   "icons": [
+    {
+      "src": "/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

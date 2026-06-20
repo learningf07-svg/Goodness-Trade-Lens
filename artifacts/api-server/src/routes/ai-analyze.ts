@@ -3,14 +3,32 @@ import axios from "axios";
 
 const router = Router();
 
-const SYSTEM_PROMPT =
-  "You are an embedded Fintech engine inside a beginner's training app. " +
-  "You only interpret financial charts, metrics, and economic data. " +
-  "Translate complex trading jargon like 'Bullish', 'Bearish', and 'Overbought' into clear, simple English for a complete beginner. " +
-  "You MUST emphasize that trading carries extreme inherent risk. " +
-  "Never guarantee profits or provide direct, unregulated buy/sell advice. " +
-  "If the user asks about anything unrelated to trading, market terms, or asset mechanics, " +
-  "politely refuse to answer and redirect them to the dashboard.";
+const SYSTEM_PROMPT = [
+  "You are the AI Education Translator inside 'Goodness Trade Lens', a Forex learning app built exclusively for complete beginners.",
+  "",
+  "YOUR ONLY PURPOSE is to translate market data and technical conditions into plain, jargon-free English that a 12-year-old could understand.",
+  "",
+  "STRICT RULES — violating any of these is not allowed:",
+  "1. EVERY trading or financial term you use MUST be immediately followed by a plain-English definition in brackets.",
+  "   Example: 'The market is Bullish (meaning buyers are driving prices higher and the value is going up).'",
+  "   Example: 'The Spread (the small gap between the buying and selling price) is currently tight.'",
+  "   Never use a jargon term without its inline definition — not even once.",
+  "",
+  "2. Structure your response in THREE clear sections:",
+  "   Section A — What Is Happening Right Now: Describe the current price movement in plain English.",
+  "   Section B — What This Could Mean for a Beginner: Explain the implication simply, without prediction.",
+  "   Section C — Important Risks to Know: Explain at least two specific risks relevant to this situation.",
+  "",
+  "3. Your FINAL paragraph MUST be this exact disclaimer (word-for-word):",
+  "   '⚠️ EDUCATIONAL NOTICE: Goodness Trade Lens does not execute trades or guarantee future performance.",
+  "   This analysis is purely for foundational educational training. All currency trading involves",
+  "   substantial risk of loss. Never trade with money you cannot afford to lose.'",
+  "",
+  "4. NEVER give a buy or sell recommendation, price target, or profit guarantee.",
+  "5. NEVER answer questions unrelated to Forex education, market mechanics, or economic events.",
+  "   If asked something off-topic, politely redirect the user to the dashboard market data.",
+  "6. Keep your total response under 400 words. Be warm, encouraging, and clear.",
+].join("\n");
 
 interface AnalyzeRequestBody {
   currencyPair?: string;
@@ -29,8 +47,8 @@ async function callGroq(userMessage: string): Promise<string> {
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userMessage },
       ],
-      temperature: 0.4,
-      max_tokens: 512,
+      temperature: 0.35,
+      max_tokens: 600,
     },
     {
       headers: {
@@ -60,15 +78,15 @@ async function callOpenRouter(userMessage: string): Promise<string> {
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userMessage },
         ],
-        temperature: 0.4,
-        max_tokens: 512,
+        temperature: 0.35,
+        max_tokens: 600,
       },
       {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://forex-edu-app.replit.app",
-          "X-Title": "Forex Educational Analytics",
+          "HTTP-Referer": "https://goodness-trade-lens.replit.app",
+          "X-Title": "Goodness Trade Lens — Educational Forex App",
         },
         timeout: 20000,
       },
@@ -98,9 +116,10 @@ router.post("/ai-analyze", async (req: Request, res: Response) => {
   }
 
   const userMessage =
-    `Currency pair: ${currencyPair}. ` +
-    `Current technical condition: ${technicalCondition}. ` +
-    `Please explain what this means in simple terms for a beginner Forex learner.`;
+    `I am a beginner learning about Forex trading. ` +
+    `Please explain the current market conditions for ${currencyPair}. ` +
+    `Here is the current data: ${technicalCondition}. ` +
+    `Remember to define every technical term inline and end with the required disclaimer.`;
 
   let analysisText: string | null = null;
   let providerUsed: string | null = null;
@@ -155,7 +174,7 @@ router.post("/ai-analyze", async (req: Request, res: Response) => {
     technicalCondition,
     analysis: analysisText,
     disclaimer:
-      "This analysis is for educational purposes only. Trading carries extreme risk. This is not financial advice.",
+      "Goodness Trade Lens does not execute trades or guarantee future performance. This analysis is purely for foundational educational training.",
     timestamp: new Date().toISOString(),
   });
 });

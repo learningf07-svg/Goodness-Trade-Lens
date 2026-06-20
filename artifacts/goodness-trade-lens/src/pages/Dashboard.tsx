@@ -12,6 +12,7 @@ import {
   BookOpen,
   Zap,
   Info,
+  Download,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -98,6 +99,157 @@ function annotateJargon(text: string): string {
     result = result.replace(regex, (match) => `${match} *(${explanation})*`);
   }
   return result;
+}
+
+/* ─── Splash Screen ──────────────────────────────────────────────────── */
+const TIPS = [
+  "A 'Pip' is the smallest price movement in a currency pair — just 0.0001 for EUR/USD.",
+  "The 'Spread' is the cost of every trade — the gap between buying and selling price.",
+  "Leverage multiplies your trade size but also multiplies your risk equally.",
+  "Over 70% of retail Forex traders lose money. Always trade what you can afford to lose.",
+  "Economic events like NFP and central bank decisions can move markets dramatically.",
+  "A 'Bullish' market means prices are rising. 'Bearish' means prices are falling.",
+  "Volatility describes how fast and unpredictably prices move — higher during news events.",
+  "The best tool for a beginner is patience — wait for clarity before any decision.",
+];
+
+function SplashScreen({ onDone }: { onDone: () => void }) {
+  const [tipIndex, setTipIndex] = useState(0);
+  const [fadeOut, setFadeOut] = useState(false);
+
+  useEffect(() => {
+    // Rotate tips every 2.5 s
+    const tipTimer = setInterval(() => {
+      setTipIndex((i) => (i + 1) % TIPS.length);
+    }, 2500);
+
+    // Begin fade-out at 6 s, call onDone at 6.6 s
+    const fadeTimer = setTimeout(() => setFadeOut(true), 6000);
+    const doneTimer = setTimeout(() => onDone(), 6700);
+
+    return () => {
+      clearInterval(tipTimer);
+      clearTimeout(fadeTimer);
+      clearTimeout(doneTimer);
+    };
+  }, [onDone]);
+
+  return (
+    <>
+      {/* Keyframe styles injected inline */}
+      <style>{`
+        @keyframes gtl-pulse-ring {
+          0%   { transform: scale(0.9); opacity: 0.6; }
+          50%  { transform: scale(1.08); opacity: 0.15; }
+          100% { transform: scale(0.9); opacity: 0.6; }
+        }
+        @keyframes gtl-glow-text {
+          0%, 100% { text-shadow: 0 0 20px rgba(0,185,122,0.5), 0 0 60px rgba(0,185,122,0.2); }
+          50%       { text-shadow: 0 0 40px rgba(0,185,122,0.9), 0 0 100px rgba(0,185,122,0.4); }
+        }
+        @keyframes gtl-spin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes gtl-tip-in {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes gtl-fade-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+      `}</style>
+
+      <div
+        className="fixed inset-0 z-[100] flex flex-col items-center justify-center px-8"
+        style={{
+          background: "#0b0f19",
+          transition: "opacity 0.7s ease",
+          opacity: fadeOut ? 0 : 1,
+          pointerEvents: fadeOut ? "none" : "all",
+          animation: "gtl-fade-in 0.5s ease forwards",
+        }}
+      >
+        {/* Icon */}
+        <div className="relative mb-8 flex items-center justify-center">
+          {/* Pulsing ring */}
+          <div
+            className="absolute rounded-full"
+            style={{
+              width: "140px",
+              height: "140px",
+              background: "rgba(0,185,122,0.08)",
+              border: "1px solid rgba(0,185,122,0.2)",
+              animation: "gtl-pulse-ring 2.4s ease-in-out infinite",
+            }}
+          />
+          <img
+            src="/app-icon.png"
+            alt="Goodness Trade Lens"
+            width={96}
+            height={96}
+            style={{ borderRadius: "22px", position: "relative", zIndex: 1 }}
+          />
+        </div>
+
+        {/* App name */}
+        <h1
+          className="font-bold text-center mb-2"
+          style={{
+            fontSize: "clamp(1.5rem, 6vw, 2rem)",
+            color: "#00b97a",
+            animation: "gtl-glow-text 2.5s ease-in-out infinite",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          Goodness Trade Lens
+        </h1>
+        <p
+          className="font-bold uppercase tracking-widest mb-10"
+          style={{ fontSize: "10px", color: "#9fa6b2" }}
+        >
+          Educational Analytics Engine
+        </p>
+
+        {/* Spinner */}
+        <div
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "50%",
+            border: "3px solid rgba(0,185,122,0.15)",
+            borderTopColor: "#00b97a",
+            animation: "gtl-spin 0.9s linear infinite",
+            marginBottom: "32px",
+          }}
+        />
+
+        {/* Rotating tip */}
+        <div
+          key={tipIndex}
+          className="max-w-xs text-center px-4 py-3 rounded-2xl"
+          style={{
+            background: "rgba(23,29,44,0.6)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            animation: "gtl-tip-in 0.4s ease forwards",
+          }}
+        >
+          <p
+            className="font-bold uppercase tracking-widest mb-1"
+            style={{ fontSize: "9px", color: "#00b97a" }}
+          >
+            Did you know?
+          </p>
+          <p
+            className="leading-relaxed"
+            style={{ fontSize: "clamp(0.75rem, 3vw, 0.85rem)", color: "#c4cad6" }}
+          >
+            {TIPS[tipIndex]}
+          </p>
+        </div>
+      </div>
+    </>
+  );
 }
 
 /* ─── JargonTooltip — info icon + glassmorphic overlay ──────────────── */
@@ -1385,6 +1537,29 @@ function ScreenInsights({
 
 /* ─── Root Dashboard ─────────────────────────────────────────────────── */
 export default function Dashboard() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  // PWA install prompt
+  const deferredPromptRef = useRef<Event & { prompt: () => Promise<void> } | null>(null);
+  const [showInstall, setShowInstall] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      deferredPromptRef.current = e as Event & { prompt: () => Promise<void> };
+      setShowInstall(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPromptRef.current) return;
+    await deferredPromptRef.current.prompt();
+    deferredPromptRef.current = null;
+    setShowInstall(false);
+  };
+
   const [marketData, setMarketData] = useState<MarketData[]>([]);
   const [marketLoading, setMarketLoading] = useState(true);
   const [marketError, setMarketError] = useState<string | null>(null);
@@ -1445,6 +1620,9 @@ export default function Dashboard() {
       className="flex flex-col min-h-[100dvh] w-full overflow-x-hidden"
       style={{ background: "#0b0f19", fontFamily: "'Inter', sans-serif" }}
     >
+      {/* ── Splash Screen ────────────────────────────────────────────── */}
+      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+
       {/* ── Top Header ────────────────────────────────────────────────── */}
       <header
         className="sticky top-0 z-20 flex items-center justify-between px-4 shrink-0"
@@ -1485,6 +1663,24 @@ export default function Dashboard() {
             EDU BETA
           </span>
         </div>
+
+        {/* Install App button — only shown when PWA prompt is available */}
+        {showInstall && (
+          <button
+            onClick={handleInstall}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition-all active:scale-95 shrink-0"
+            style={{
+              background: "linear-gradient(135deg, rgba(0,185,122,0.18), rgba(0,185,122,0.08))",
+              border: "1px solid rgba(0,185,122,0.35)",
+              color: "#00b97a",
+              fontSize: "clamp(0.65rem, 2.5vw, 0.75rem)",
+              boxShadow: "0 0 12px rgba(0,185,122,0.15)",
+            }}
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Install App</span>
+          </button>
+        )}
 
         {/* Practice balance */}
         <DropdownMenu>
